@@ -1,4 +1,4 @@
-# *********************************************************************************e
+# *********************************************************************************
 # Author: Christian Jamtheim Gustafsson, PhD, Medical Physcist Expert
 # Skåne University Hospital, Lund, Sweden and Lund University, Lund, Sweden
 # Description: Fuses data from MICE and pre-processed data from the Nifti structures
