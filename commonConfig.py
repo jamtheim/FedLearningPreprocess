@@ -61,8 +61,8 @@ class commonConfigClass():
     base.treatmentStudyFolder = os.path.join(base.workFolder, 'Treatment study based on MRI' )
 
     # Set pre-processing on selected cohort (comment the other one out)
-    #preProcess.study = 'Validation' # 'Validation' or 'Treatment'
-    preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
+    preProcess.study = 'Validation' # 'Validation' or 'Treatment'
+    #preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
     
     if preProcess.study == 'Validation':
         preProcess.inputDicomPatientDir = base.validationStydyFolder
@@ -150,31 +150,10 @@ class commonConfigClass():
     # Set option for defacing data
     preProcess.defaceData = True
     preProcess.faceMaskAnonDistance = (0, 120, -40) # Number of voxels to move from center to define center of face mask 
-    # row, col, slice in rotated image space (90 degrees)
-    preProcess.faceMaskAnonSize = (150, 60, 40) # Size of face mask in pixels after resampling and cropping
+    preProcess.faceMaskAnonSize = (256, 70, 50) # Size of face mask in pixels after resampling and cropping
+    # row, col, slice in rotated image space for the above two (90 degrees). 
+    # Fist parameter of faceMaskAnonSize will set width in tra image, second depth in the tra image, third number of slices. 
     preProcess.faceMaskOrientStructureFileName = 'mask_Brain.nii.gz' # Used for orientation of the face mask
 
-    
-    ### TEMPORARY ###
-    # Set image volume to use for defacing and creation of face mask
-    preProcess.defaceImageVolume = 'image T1 tra.nii.gz'
-    # Make sure FreeSurfer is installed in home path
-    # Get home path
-    preProcess.freeSurferBinPath = os.path.join(os.path.expanduser("~"), 'freesurfer', 'bin')
-    # Set path to mri_deface_linux file
-    preProcess.mriDefaceFolder = os.path.join(base.baseFolder, 'mri_deface')
-    preProcess.mriDefaceFile = os.path.join(preProcess.mriDefaceFolder, 'mri_deface_linux')
-    preProcess.mriDefaceBrainTemplate = os.path.join(preProcess.mriDefaceFolder, 'talairach_mixed_with_skull.gca')
-    preProcess.mriDefaceFaceTemplate = os.path.join(preProcess.mriDefaceFolder, 'face.gca')  
-
-    # Set path to FreeSurfer setup file
-    preProcess.FreeSurferSetupFile = os.path.join(base.baseFolder, 'freeSurferSetup.sh')
-    try:
-        # Run shell script
-        subprocess.run(['bash', preProcess.FreeSurferSetupFile], check=True)
-        # print("Shell script executed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error running shell script: {e}")
-    
-    
+   
 

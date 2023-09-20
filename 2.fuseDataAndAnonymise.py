@@ -49,6 +49,7 @@ patFolders = os.listdir(conf.preProcess.outputNiftiPatientDir)
 # Only include folders in the listing
 patFolders = [x for x in patFolders if os.path.isdir(os.path.join(conf.preProcess.outputNiftiPatientDir, x))]
 
+
 # Loop over patFolders
 for patIndex, patient in enumerate(patFolders):
     # Get the first part of the patient name as this is the anon patient number (study index)
@@ -71,6 +72,7 @@ for patIndex, patient in enumerate(patFolders):
     # Copy over correspoding MICE data to the final data location 
     # Get the MICE patient data folder by matching the patID
     patFolderMICE = [x for x in os.listdir(conf.base.dataFolderMICE) if patID in x]
+
     # Make sure only one folder is found in the matching
     if len(patFolderMICE) == 0:
         print('Error: No MICE patient folder found for patient: ', patID)
@@ -96,17 +98,26 @@ for patIndex, patient in enumerate(patFolders):
             exit()
         # Get path of the only directory
         PATH_patSubFolderMICE = os.path.join(patFolderMICE, patSubFolderMICE[0])
+
+        # If directory contains Nifti files then copy them over to the final data location
+        if convertData.detectNiiFiles(PATH_patSubFolderMICE):
         # Copy all the Nifti files from the MICE data to the final data location
         # Loop over all files in the MICE data folder
-        for file in os.listdir(PATH_patSubFolderMICE):
-            # Check if file is a Nifti file
-            if '.nii.gz' in file:
-                # Copy the file to the final data location
-                shutil.copy(os.path.join(PATH_patSubFolderMICE, file), os.path.join(patFolderAnon, file))
+            for file in os.listdir(PATH_patSubFolderMICE):
+                # Check if file is a Nifti file
+                if '.nii.gz' in file:
+                    # Copy the file to the final data location
+                    shutil.copy(os.path.join(PATH_patSubFolderMICE, file), os.path.join(patFolderAnon, file))
 
-        # Count number of files in patFolderAnon after copying over MICE data
-        numFiles = len(os.listdir(patFolderAnon))
-        # Make sure there are X number of files in the folder
+            # Count number of files in patFolderAnon after copying over MICE data
+            numFiles = len(os.listdir(patFolderAnon))
+            # Make sure there are X number of files in the folder
+        else:
+            print('Error: No Nifti files found in MICE data for patient: ', patID)
+            print('Hence, not copied over to final data location as data is missing')
+            # Detele the anonomized patient folder
+            shutil.rmtree(patFolderAnon)
+
         """
         if conf.preProcess.study == 'Treatment': 
             assert numFiles >= 18, 'Error: Number of files in patient folder is bellow 18!' # Can still be mutiple targets 

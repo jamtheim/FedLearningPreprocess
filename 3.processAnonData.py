@@ -54,7 +54,7 @@ if not os.path.isdir(conf.preProcess.outputNiftiPatientDirFinalResampled):
     os.makedirs(conf.preProcess.outputNiftiPatientDirFinalResampled, exist_ok=True)
 
 # Set number of CPU threads to use
-nrCPU = 1
+nrCPU = 20
 # Init parallell job for resampling the Nifti data
 patInfo = Parallel(n_jobs=nrCPU, verbose=10)(delayed(patLargeDataLoop)(patNr, patient) for patNr, patient in enumerate(patFolders))
      

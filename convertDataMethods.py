@@ -73,6 +73,21 @@ class convertDataMethodsClass:
         return selectedFolder
 
 
+    def detectNiiFiles(self, folder_path, max_levels=1):
+        """
+        Detect if folder or its subfolder contains .nii.gz files
+        """
+        for root, dirs, files in os.walk(folder_path):
+            # Calculate the depth of the current directory relative to the starting folder
+            depth = root.count(os.path.sep) - folder_path.count(os.path.sep)
+            # Check if the depth is within the specified limit
+            if depth <= max_levels:
+                for file in files:
+                    if file.endswith(".nii.gz"):
+                        return True  # Return True if at least one .nii file is found
+        return False  # Return False if no .nii files are found
+
+
     def stackNiftiData(self, i_subject, subject, dataInBasePath, dataOutBasePath):
         """
         Stack Nifti data to multi channel Nifti file. ALso handles GT data. 
@@ -386,12 +401,9 @@ class convertDataMethodsClass:
             assert reSampledSubjectData.shape == reSampledBBDataNp.shape, 'Input reSampledSubjectData must have same size as reSampledBBDataNp for all dimensions'
             # Crop volume with respect to the bounding box structure file including marginal space in voxels 
             reSampledCutSubjectData = self.cropImageFromMask(reSampledSubjectData, reSampledBBDataNp, conf.preProcess.marginCropVoxel, subject)
-
             # Deface the data if option is set and condition is met
             if conf.preProcess.defaceData == True:
                 reSampledCutSubjectData = self.faceMaskAnon(reSampledCutSubjectData, reSampledBBDataNp, subjectFolderPath, conf.preProcess.faceMaskAnonDistance, conf.preProcess.faceMaskAnonSize, subject)
-                pass
-
             # Zero pad data to desired size
             reSampledCutPadSubjectData = self.padAroundImageCenter(reSampledCutSubjectData, conf.preProcess.paddedSize, subject)
             # Assign final data to be saved
@@ -401,24 +413,7 @@ class convertDataMethodsClass:
             # Save data to subjectOutFolderPath
             subjectOutFilePath = os.path.join(subjectOutFolderPath, subjectFile)
             nibabel.save(finalImage, subjectOutFilePath)
-            # Open with ITK snap
-            os.system('itksnap -g ' + subjectOutFilePath + ' -s ' + subjectOutFilePath)
-
-
-            ### TESTING ###
-            enableFlag = False
-            # Deface the data if option is set and condition is met
-            if conf.preProcess.defaceData == True and subjectFile == conf.preProcess.defaceImageVolume and enableFlag: 
-                # Define output path
-                subjectOutFilePathDefaced = os.path.join(subjectOutFolderPath, 'defaced', subjectFile)
-                # Make sure directory exists
-                os.makedirs(os.path.dirname(subjectOutFilePathDefaced), exist_ok=True)
-                # Deface the data
-                deFaceCommand = '"' + conf.preProcess.mriDefaceFile + '"' + " " + '"' + subjectOutFilePath + '"' + " " + '"'+ conf.preProcess.mriDefaceBrainTemplate + '"' + " " + '"' + conf.preProcess.mriDefaceFaceTemplate + '"' + " " + '"' + subjectOutFilePathDefaced + '"'
-                # Run the command
-                #os.system(deFaceCommand)
-
-
+   
 
     def DicomRT2Nifti(self, i_subject, subject, dataInBasePath, dataOutBasePath):
         """

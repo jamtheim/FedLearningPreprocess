@@ -36,8 +36,6 @@ def patLargeDataLoop(patNr, patient):
     # Convert Dicom to Nifti
     convertData.DicomRT2Nifti(patNr, patient, conf.preProcess.inputDicomPatientDir, conf.preProcess.outputNiftiPatientDir)
 
-    
-
 
 # ### SCRIPT STARTS HERE ###
 # Print info
@@ -48,6 +46,8 @@ print('This is from the ' + str(conf.preProcess.study) + ' study')
 patFolders = os.listdir(conf.preProcess.inputDicomPatientDir)
 # Only include folder
 patFolders = [x for x in patFolders if os.path.isdir(os.path.join(conf.preProcess.inputDicomPatientDir, x))]
+
+
 # Make sure the output Nifti directory exists
 if not os.path.isdir(conf.preProcess.outputNiftiPatientDir):
     # Create dir
