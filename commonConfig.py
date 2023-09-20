@@ -6,6 +6,7 @@
 
 import os
 import numpy as np
+import subprocess
 
 class commonConfigClass():
     """
@@ -50,6 +51,8 @@ class commonConfigClass():
     postProcess = postProcess()
 
     # Set base configuration
+    # Get folder where this file is located
+    base.baseFolder = os.path.dirname(os.path.abspath(__file__))
     # Working folder 
     base.workFolder = os.path.join('/mnt/WindowsDisk/CJG/MRIOnlyBrain')
     # Specific folders for two study cohorts acquired from Skåne University Hospital, Lund, Sweden
@@ -58,23 +61,25 @@ class commonConfigClass():
     base.treatmentStudyFolder = os.path.join(base.workFolder, 'Treatment study based on MRI' )
 
     # Set pre-processing on selected cohort (comment the other one out)
-    preProcess.study = 'Validation' # 'Validation' or 'Treatment'
-    #preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
+    #preProcess.study = 'Validation' # 'Validation' or 'Treatment'
+    preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
     
     if preProcess.study == 'Validation':
         preProcess.inputDicomPatientDir = base.validationStydyFolder
-        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230620/#validation')
+        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230918/#Validation')
     elif preProcess.study == 'Treatment':
         preProcess.inputDicomPatientDir = base.treatmentStudyFolder
-        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230620/#treatment')
+        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230918/#Treatment')
 
     # Define output directory for Nifti data 
     preProcess.outputNiftiPatientDir = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study)
     # Corresponding folder for fused final data (used in 2.fuseDataAndAnonomise.py)
-    preProcess.outputNiftiPatientDirFinal = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAndAnon')
+    preProcess.outputNiftiPatientDirFinal = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAnon')
     # Corresponding folder for fused final and resampled data (used in 3.resampleAnonData.py)
-    preProcess.outputNiftiPatientDirFinalResampled = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAndAnonAndResampled')
-
+    preProcess.outputNiftiPatientDirFinalResampled = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAnonResampled')
+    # Corresponding folder for fused final, resampled and stacked data (used in 4.stackData.py)
+    preProcess.outputNiftiPatientDirFinalResampledStacked = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAnonResampledStacked')
+    
     
     # Set folder where DICOM struct file is located
     preProcess.RTstructFolderFirst = 'Structs'
@@ -88,11 +93,16 @@ class commonConfigClass():
     preProcess.bodyStructureName2 = 'External'
 
     # Set keywords for selecting structures to be extracted
-    preProcess.structureNameKeywords = ['BODY', 'Brain', 'Stem', 'Chiasm', 'GTV', 'CTV', 'Eye', 'Lens', 'Optic']
+    # preProcess.structureNameKeywords = ['BODY', 'Brain', 'Stem', 'Chiasm', 'GTV', 'CTV', 'Eye', 'Lens', 'Optic']
+    preProcess.structureNameKeywords = ['BODY', 'Stem', 'GTV', 'CTV']
     preProcess.structureNameExclude = ['PRV', 'Z_', 'Y_', 'X_', 'dura', 'ben', 'äldre', 'ventricle']
 
+    # Define bounding box file name, marginal will be added 
+    preProcess.BBFileName = 'mask_Brain.nii.gz'
+  
     # Define a list of exactly named structures that are expected to exist after extraction
     # This does not include GTV or CTV, whis is handled separately where the list is used. 
+    """
     preProcess.structureFileNameExact = [
     'image.nii.gz',
     'mask_BODY.nii.gz',
@@ -106,6 +116,65 @@ class commonConfigClass():
     'mask_OpticNerve_L.nii.gz',
     'mask_OpticNerve_R.nii.gz'
     ]
+    """
+
+    preProcess.structureFileNameExact = [
+    'mask_BODY.nii.gz',
+    'mask_BrainStem.nii.gz',
+    'mask_Brain.nii.gz',
+    ]
+
+    # Define a list of structures that are going to be stacked together to form a single 4D Nifti file. Order is important!
+    preProcess.ImageFileNameStack = [
+    'image T2 tra flair fs.nii.gz',
+    'image T1 tra.nii.gz',
+    'image T1 tra GD.nii.gz',
+    'image T2 tra GD.nii.gz',
+    ]
+
+    # Create a dictory with the structure names and assign values for the GT Nifti file. Order is important and should be based on hierarki! 
+    # As we only have one label map it is not possible to have overlapping structures. Sort below dictioary with this in mind. 
+    preProcess.GTStructureFileName = {
+    'mask_BrainStem.nii.gz': 4,
+    'mask_CTVT.nii.gz': 2,
+    'mask_GTVT.nii.gz': 1, # Always smaller than CTV
+    }
 
     # Set voxel size for resampling
     preProcess.voxelSize = (1.0, 1.0, 2.0) # Most original data is 2 mm in slice thickness
+    # Set margin for cropping, rowMin, rowMax, colMin, colMax, zMin, zMax. Units in resampled voxel size. 
+    # Image is rotated 90 degrees. Hence, row and col are swapped. 
+    preProcess.marginCropVoxel = (35, 35, 35, 35, 20, 10) 
+    # Set matrix size after resampling and cropping using padding
+    preProcess.paddedSize = (256, 256, 140) # Most original data is 256x256 in plane size   
+    # Set option for defacing data
+    preProcess.defaceData = True
+    preProcess.faceMaskAnonDistance = (0, 120, -40) # Number of voxels to move from center to define center of face mask 
+    # row, col, slice in rotated image space (90 degrees)
+    preProcess.faceMaskAnonSize = (150, 60, 40) # Size of face mask in pixels after resampling and cropping
+    preProcess.faceMaskOrientStructureFileName = 'mask_Brain.nii.gz' # Used for orientation of the face mask
+
+    
+    ### TEMPORARY ###
+    # Set image volume to use for defacing and creation of face mask
+    preProcess.defaceImageVolume = 'image T1 tra.nii.gz'
+    # Make sure FreeSurfer is installed in home path
+    # Get home path
+    preProcess.freeSurferBinPath = os.path.join(os.path.expanduser("~"), 'freesurfer', 'bin')
+    # Set path to mri_deface_linux file
+    preProcess.mriDefaceFolder = os.path.join(base.baseFolder, 'mri_deface')
+    preProcess.mriDefaceFile = os.path.join(preProcess.mriDefaceFolder, 'mri_deface_linux')
+    preProcess.mriDefaceBrainTemplate = os.path.join(preProcess.mriDefaceFolder, 'talairach_mixed_with_skull.gca')
+    preProcess.mriDefaceFaceTemplate = os.path.join(preProcess.mriDefaceFolder, 'face.gca')  
+
+    # Set path to FreeSurfer setup file
+    preProcess.FreeSurferSetupFile = os.path.join(base.baseFolder, 'freeSurferSetup.sh')
+    try:
+        # Run shell script
+        subprocess.run(['bash', preProcess.FreeSurferSetupFile], check=True)
+        # print("Shell script executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running shell script: {e}")
+    
+    
+

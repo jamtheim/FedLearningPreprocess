@@ -17,6 +17,9 @@ from dcmrtstruct2nii import dcmrtstruct2nii, list_rt_structs
 import shutil
 from datetime import datetime, timedelta
 from joblib import Parallel, delayed
+#import pydeface.utils as pdu
+import matplotlib.pyplot as plt
+
 from commonConfig import commonConfigClass
 # Load configuration
 conf = commonConfigClass() 
@@ -70,9 +73,264 @@ class convertDataMethodsClass:
         return selectedFolder
 
 
-    def resampleNiftiData(self, i_subject, subject, dataInBasePath, dataOutBasePath):
+    def stackNiftiData(self, i_subject, subject, dataInBasePath, dataOutBasePath):
         """
-        Resample Nifti data to chosen spatial resolution
+        Stack Nifti data to multi channel Nifti file. ALso handles GT data. 
+
+        Args:
+            i_subject (int): The current subject number
+            subject (str): The current subject name
+            dataInBasePath (str): The base path to the input dataset
+            dataOutBasePath (str): The base path to the output dataset
+            
+        Returns:
+            Outputs data to directory 
+        """
+        # Assess input
+        assert isinstance(i_subject, int), 'Input i_subject must be an integer'
+        assert isinstance(subject, str), 'Input subject must be a string'
+        assert isinstance(dataInBasePath, str), 'Input dataInBasePath must be a string'
+        assert isinstance(dataOutBasePath, str), 'Input dataInBasePath must be a string'
+        # Assert existing directories
+        assert os.path.isdir(dataInBasePath), 'Input dataInBasePath must be a directory'
+        assert os.path.isdir(dataOutBasePath), 'Input dataOutBasePath must be a directory'
+        # Get the subject folder path 
+        subjectFolderPath = os.path.join(dataInBasePath, subject)
+        # List all files and make sure they are all Nifti
+        subjectFiles = [f for f in os.listdir(subjectFolderPath) if os.path.isfile(os.path.join(subjectFolderPath, f))]
+        for subjectFile in subjectFiles:
+            assert subjectFile.endswith('.nii.gz'), 'All files in subject folder must be Nifti'
+        # Define output folders
+        imagesOutFolderPath = os.path.join(dataOutBasePath, "train", "images")
+        GTOutFolderPath = os.path.join(dataOutBasePath, "train", "labels")
+        # Make sure output folder exists
+        os.makedirs(imagesOutFolderPath, exist_ok=True)
+        os.makedirs(GTOutFolderPath, exist_ok=True)
+
+        ### IMAGE VOLUME ###
+        # Create the Nifti image stack from subjectFiles
+        imageVolumes = []
+        for imageFile in conf.preProcess.ImageFileNameStack:
+            # Read Nifti file
+            imageFilePath = os.path.join(subjectFolderPath, imageFile)
+            imageData = nibabel.load(imageFilePath)
+            # Assert imageData not empty
+            assert imageData is not None, 'Input imageData must not be empty'
+            # Append to list
+            imageVolumes.append(imageData.get_fdata())
+        # Stack volumes
+        stackedVolume = np.stack(imageVolumes, axis=-1)
+        # Create new Nifti volume. Use affine from last image in the stack, should be same for all 
+        # they are registered to CT. 
+        stackedImage = nibabel.Nifti1Image(stackedVolume, imageData.affine) 
+        # Save image to 4D Nifti file 
+        outputFilename = os.path.join(imagesOutFolderPath, f"{subject}_4channel.nii.gz")
+        nibabel.save(stackedImage, outputFilename)
+
+        ### GT VOLUME ###
+        # Create the GT Nifti file in subjectFiles and save it
+        # Create an empty variable with same size as stackedVolume
+        GTVolume_shape = (stackedVolume.shape[0], stackedVolume.shape[1], stackedVolume.shape[2]) 
+        GTVolume = np.zeros(GTVolume_shape, dtype=np.uint8)  # Change dtype as needed
+        # Loop through the dictionary of GT structures
+        # Order is important to keep the hierarci of the structures correct
+        for GTFile in conf.preProcess.GTStructureFileName.keys():
+            # Read GT Nifti file
+            GTFilePath = os.path.join(subjectFolderPath, GTFile)
+            # Make sure the file exists
+            if os.path.isfile(GTFilePath) == False: 
+                print('File ' + GTFilePath + ' does not exist')
+                print('Skipping this file and removing image data for ' + subject + ' from the dataset')
+                # Remove corresponding image data
+                os.remove(os.path.join(imagesOutFolderPath, f"{subject}_4channel.nii.gz"))
+                return # Do not write GT file at all, abort processing for this patient. 
+
+            GTData = nibabel.load(GTFilePath)
+            # Assert GTData is not empty
+            assert GTData is not None, 'Input GTData must not be empty'
+            # Assert same size as stackedVolume for the first three dimensions
+            assert GTData.shape[0] == stackedVolume.shape[0], 'Input GTData must have same size as stackedVolume for the first dimension'
+            assert GTData.shape[1] == stackedVolume.shape[1], 'Input GTData must have same size as stackedVolume for the second dimension'
+            assert GTData.shape[2] == stackedVolume.shape[2], 'Input GTData must have same size as stackedVolume for the third dimension'
+            # Get the value for the structure from the dictionary
+            assignedValue = conf.preProcess.GTStructureFileName[GTFile]
+            # Multiply the GT data with the assigned value
+            GTDataAssigned = GTData.get_fdata() * assignedValue
+            # Create a mask for non-zero values in GTDataAssigned
+            nonZeroMask = GTDataAssigned != 0
+            # Update GTVolumes with non-zero values from nonZeroMask
+            GTVolume[nonZeroMask] = GTDataAssigned[nonZeroMask]
+        # Create new Nifti volume. Use affine from last image in the stack, should be same for all
+        # they are registered to CT.
+        GTVolumeCombined = nibabel.Nifti1Image(GTVolume, GTData.affine)
+        # Save image to 3D Nifti file
+        outputFilename = os.path.join(GTOutFolderPath, f"{subject}_seg.nii.gz")
+        nibabel.save(GTVolumeCombined, outputFilename)     
+        print(' ')
+
+
+    def padAroundImageCenter(self, imageArray, paddedSize, subject):
+        """
+        Pad matrix with zeros to desired shape.
+        
+        Args:
+            imageArray (array): Image array to be padded
+            paddedSize (int): Size of matrix after zero padding
+
+        Return:
+            paddedImageArray (array): Padded image array
+        """
+        # Assert tuple and np array
+        assert isinstance(paddedSize, tuple), "Padded size is not a tuple"
+        assert isinstance(imageArray, np.ndarray), "Image array is not a numpy array"
+        # Assert image size is not larger than padded size
+        assert imageArray.shape[0] <= paddedSize[0], "Image size is larger than requested padded size in row: " + str(imageArray.shape[0]) + " vs " + str(paddedSize[0]) + " in subject " + str(subject)
+        assert imageArray.shape[1] <= paddedSize[1], "Image size is larger than requested padded size in column: " + str(imageArray.shape[1]) + " vs " + str(paddedSize[1]) + " in subject " + str(subject)
+        assert imageArray.shape[2] <= paddedSize[2], "Image size is larger than requested padded size in slice: " + str(imageArray.shape[2]) + " vs " + str(paddedSize[2]) + " in subject " + str(subject)
+        # Get shape of the image array
+        origShape = imageArray.shape
+        # Caluclate half the difference between the desired 
+        # size and the original shape and round up
+        diff = np.round((np.array(paddedSize) - np.array(origShape))//2)
+        # Calculate padding. Takes care of case when matrix are uneven size. 
+        extraLeft = diff[0]
+        extraRight = paddedSize[0] - origShape[0] - diff[0]
+        extraTop = diff[1]
+        extraBottom = paddedSize[1] - origShape[1] - diff[1]
+        extraFront = diff[2]
+        extraBack = paddedSize[2] - origShape[2] - diff[2]
+        # Pad the image array with zeros
+        paddedImageArray = np.pad(imageArray, ((extraLeft,extraRight), (extraTop,extraBottom), (extraFront, extraBack)), 'constant', constant_values=0)
+        # Assert correct padded size, very important
+        assert paddedImageArray.shape[0] == paddedSize[0], "Padded image size is incorrect in row"
+        assert paddedImageArray.shape[1] == paddedSize[1], "Padded image size is incorrect in column"
+        assert paddedImageArray.shape[2] == paddedSize[2], "Padded image size is incorrect in slice"
+        # Return the padded image array
+        return paddedImageArray
+    
+
+    def cropImageFromMask(self, image, mask, marginal, subject):
+        """
+        Crop image from mask and add marginal space in voxels
+
+         Args:
+            image (array): 3D image
+            mask (array): 3D mask 
+            marginal (tuple): Number of voxels to add around the mask
+
+        Return:
+            croppedImage (array): Cropped image
+        
+        """
+        assert len(image.shape) == 3, "dim should be 3"
+        assert len(mask.shape) == 3, "dim should be 3"
+        # Coordinates of non-zero elements in the mask
+        coords = np.argwhere(mask)
+        # Bounding box coordinates of the box mask
+        x0, y0, z0 = coords.min(axis=0)
+        x1, y1, z1 = coords.max(axis=0) + 1   # slices are exclusive at the top
+        # Add marginal to the bounding box
+        x0 = x0 - marginal[0]
+        x1 = x1 + marginal[1]
+        y0 = y0 - marginal[2]
+        y1 = y1 + marginal[3]
+        z0 = z0 - marginal[4]
+        z1 = z1 + marginal[5]       
+        # If the bounding box with margin is outside the image, set it to the image size
+        if x0 < 0:
+            x0 = 0
+        if x1 > image.shape[0]:
+            x1 = image.shape[0]
+        if y0 < 0:
+            y0 = 0
+        if y1 > image.shape[1]:
+            y1 = image.shape[1]
+        if z0 < 0:
+            z0 = 0
+        if z1 > image.shape[2]:
+            z1 = image.shape[2]
+        # Get the extracted contents of the box
+        croppedImage = image[x0:x1, y0:y1, z0:z1]
+        # Return the cropped image
+        return croppedImage
+
+
+    def faceMaskAnon(self, imgData, boundingBoxData, subjectFolderPath, faceMaskAnonDist, faceMaskAnonSize, subject): 
+        """
+        Apply face mask to image data and set values in mask to zero. 
+        This is performed with the help of a orientational structure 
+        that is used to define the face mask. From there a distance from this 
+        structure is defined and a face mask is created 
+        around the end point of that distance.
+
+        Args:
+            imgData (array): Image data to be defaced
+            boundingBoxData (array): Bounding box data that previosly was applied to the image data. 
+                Same operation must be done on the orientational structure to keep geometry.
+            subjectFolderPath (str): Path to subject folder
+            faceMaskAnonDist (tuple): Distance from center of support structure to center of face mask in voxels
+            faceMaskAnonSize (tuple): Size of face mask in pixels
+            subject (str): Subject name
+            
+        Returns:
+            Outputs masked image data where masked parts of the face is set to zero
+        """
+        # Assert input
+        assert isinstance(imgData, np.ndarray), 'Input imgData must be a numpy array'
+        assert isinstance(boundingBoxData, np.ndarray), 'Input boundingBoxData must be a numpy array'
+        assert isinstance(subjectFolderPath, str), 'Input subjectFolderPath must be a string'
+        assert isinstance(faceMaskAnonDist, tuple), 'Input faceMaskAnonDist must be a tuple'
+        assert isinstance(faceMaskAnonSize, tuple), 'Input faceMaskAnonSize must be a tuple'
+        assert isinstance(subject, str), 'Input subject must be a string'
+        # Load in the structure used for orientation.
+        # In this case use the brain structure as starting point
+        orientFilePath = os.path.join(subjectFolderPath, conf.preProcess.faceMaskOrientStructureFileName)
+        orientData = nibabel.load(orientFilePath)
+        # Resample to chosen spatial resolution, using nearest neighbour interpolation as this is a mask. 
+        reSampledOrientData = nibabel.processing.resample_to_output(orientData, voxel_sizes=conf.preProcess.voxelSize, order=0, mode='constant', cval=0.0)
+        reSampledOrientData = reSampledOrientData.get_fdata() # This is the brain segmentation map
+        # Apply the bounding box to the reSampledOrientData
+        reSampledCropOrientData = self.cropImageFromMask(reSampledOrientData, boundingBoxData, conf.preProcess.marginCropVoxel, subject)
+        # This must now be the same size as imgData, assert
+        assert reSampledCropOrientData.shape == imgData.shape, 'Input reSampledOrientData must have same size as imgData for all dimensions'
+        # Get the center of mass of the mask
+        centerOfMass = scipy.ndimage.measurements.center_of_mass(reSampledCropOrientData)
+        # Round to nearest integer
+        centerOfMass = np.round(centerOfMass).astype(int)
+        # Take this coordinate and move the coordinate in the image 
+        # This is the new center of the face mask. Be aware of the coordinate system, x and y are swapped, and z is flipped. Control in the input. 
+        faceMaskCenter = (centerOfMass[0] + faceMaskAnonDist[0], centerOfMass[1] + faceMaskAnonDist[1], centerOfMass[2] + faceMaskAnonDist[2])
+        # Create an empty array with ones with the same size as the image data
+        faceMask = np.ones(imgData.shape)
+        # Calculate the coordinates of the corners of the 3D rectangle in the image space
+        x1 = int(faceMaskCenter[0] - faceMaskAnonSize[0] / 2)
+        x2 = int(faceMaskCenter[0] + faceMaskAnonSize[0] / 2)
+        y1 = int(faceMaskCenter[1] - faceMaskAnonSize[1] / 2)
+        y2 = int(faceMaskCenter[1] + faceMaskAnonSize[1] / 2)
+        z1 = int(faceMaskCenter[2] - faceMaskAnonSize[2] / 2)
+        z2 = int(faceMaskCenter[2] + faceMaskAnonSize[2] / 2)
+        # Ensure the coordinates are within the bounds of the faceMask array
+        x1 = max(0, x1)
+        x2 = min(faceMask.shape[0], x2)
+        y1 = max(0, y1)
+        y2 = min(faceMask.shape[1], y2)
+        z1 = max(0, z1)
+        z2 = min(faceMask.shape[2], z2)
+        # Create the rectangle by setting the corresponding region in faceMask to 0
+        faceMask[x1:x2, y1:y2, z1:z2] = 0   
+        # Convert to mask 
+        faceMask = faceMask.astype(np.uint8)
+        # Apply mask to data and set values to zero
+        imgData[faceMask == 0] = 0
+
+
+        # Return data
+        return imgData
+
+
+    def processNiftiData(self, i_subject, subject, dataInBasePath, dataOutBasePath):
+        """
+        Process Nifti data to chosen spatial resolution, cut, pad and deface the data 
 
         Args:
             i_subject (int): The current subject number
@@ -101,17 +359,66 @@ class convertDataMethodsClass:
         subjectOutFolderPath = os.path.join(dataOutBasePath, subject)
         # Make sure output folder exists
         os.makedirs(subjectOutFolderPath, exist_ok=True)
-        # Resample each Nifti file in subjectFiles to chosen spatial resolution and save to subjectOutFolderPath
+
+        # Assert that the bounding box structure file exists. Used to define the bouding box. 
+        assert conf.preProcess.BBFileName in subjectFiles
+        BBFilePath = os.path.join(subjectFolderPath, conf.preProcess.BBFileName)
+        BBData = nibabel.load(BBFilePath)
+        # Resample to chosen spatial resolution, using nearest neighbour interpolation as this is a mask.
+        reSampledBBData = nibabel.processing.resample_to_output(BBData, voxel_sizes=conf.preProcess.voxelSize, order=0, mode='constant', cval=0.0)
+        reSampledBBDataNp = reSampledBBData.get_fdata() # This is the brain segmentation map
+
+        # Resample, cut and pad each Nifti file in subjectFiles to chosen spatial resolution and save to subjectOutFolderPath
         for subjectFile in subjectFiles:
             # Read Nifti file
             subjectFilePath = os.path.join(subjectFolderPath, subjectFile)
             subjectData = nibabel.load(subjectFilePath)
             # Resample to chosen spatial resolution
-            reSampledSubjectData = nibabel.processing.resample_to_output(subjectData, voxel_sizes=conf.preProcess.voxelSize, order=3, mode='constant', cval=0.0)
+            # Order 0 is nearest neighbour interpolation, used for masks, order 3 is cubic spline interpolation, used for image data. 
+            if 'mask' in subjectFile:
+                interpolationOrder = 0
+            else:
+                interpolationOrder = 3
+            # Perform resamling
+            reSampledSubjectData = nibabel.processing.resample_to_output(subjectData, voxel_sizes=conf.preProcess.voxelSize, order=interpolationOrder, mode='constant', cval=0.0)
+            reSampledSubjectData = reSampledSubjectData.get_fdata()
+            # Assert same size as bounding box structure for all dimensions
+            assert reSampledSubjectData.shape == reSampledBBDataNp.shape, 'Input reSampledSubjectData must have same size as reSampledBBDataNp for all dimensions'
+            # Crop volume with respect to the bounding box structure file including marginal space in voxels 
+            reSampledCutSubjectData = self.cropImageFromMask(reSampledSubjectData, reSampledBBDataNp, conf.preProcess.marginCropVoxel, subject)
+
+            # Deface the data if option is set and condition is met
+            if conf.preProcess.defaceData == True:
+                reSampledCutSubjectData = self.faceMaskAnon(reSampledCutSubjectData, reSampledBBDataNp, subjectFolderPath, conf.preProcess.faceMaskAnonDistance, conf.preProcess.faceMaskAnonSize, subject)
+                pass
+
+            # Zero pad data to desired size
+            reSampledCutPadSubjectData = self.padAroundImageCenter(reSampledCutSubjectData, conf.preProcess.paddedSize, subject)
+            # Assign final data to be saved
+            finalSubjectData = reSampledCutPadSubjectData
+            # Create new Nifti volume. Use affine from last image in the stack, should be same for all
+            finalImage = nibabel.Nifti1Image(finalSubjectData, reSampledBBData.affine)
             # Save data to subjectOutFolderPath
             subjectOutFilePath = os.path.join(subjectOutFolderPath, subjectFile)
-            nibabel.save(reSampledSubjectData, subjectOutFilePath)
-            
+            nibabel.save(finalImage, subjectOutFilePath)
+            # Open with ITK snap
+            os.system('itksnap -g ' + subjectOutFilePath + ' -s ' + subjectOutFilePath)
+
+
+            ### TESTING ###
+            enableFlag = False
+            # Deface the data if option is set and condition is met
+            if conf.preProcess.defaceData == True and subjectFile == conf.preProcess.defaceImageVolume and enableFlag: 
+                # Define output path
+                subjectOutFilePathDefaced = os.path.join(subjectOutFolderPath, 'defaced', subjectFile)
+                # Make sure directory exists
+                os.makedirs(os.path.dirname(subjectOutFilePathDefaced), exist_ok=True)
+                # Deface the data
+                deFaceCommand = '"' + conf.preProcess.mriDefaceFile + '"' + " " + '"' + subjectOutFilePath + '"' + " " + '"'+ conf.preProcess.mriDefaceBrainTemplate + '"' + " " + '"' + conf.preProcess.mriDefaceFaceTemplate + '"' + " " + '"' + subjectOutFilePathDefaced + '"'
+                # Run the command
+                #os.system(deFaceCommand)
+
+
 
     def DicomRT2Nifti(self, i_subject, subject, dataInBasePath, dataOutBasePath):
         """

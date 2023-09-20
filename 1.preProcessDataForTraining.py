@@ -55,7 +55,7 @@ if not os.path.isdir(conf.preProcess.outputNiftiPatientDir):
 
 # Set number of CPU threads to use
 #nrCPU = multiprocessing.cpu_count()-2
-nrCPU = 20
+nrCPU = 40
 
 # Init parallell job for converting DICOM to Nifti 
 patInfo = Parallel(n_jobs=nrCPU, verbose=10)(delayed(patLargeDataLoop)(patNr, patient) for patNr, patient in enumerate(patFolders))
