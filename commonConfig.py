@@ -61,15 +61,15 @@ class commonConfigClass():
     base.treatmentStudyFolder = os.path.join(base.workFolder, 'Treatment study based on MRI' )
 
     # Set pre-processing on selected cohort (comment the other one out)
-    preProcess.study = 'Validation' # 'Validation' or 'Treatment'
-    #preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
+    #preProcess.study = 'Validation' # 'Validation' or 'Treatment'
+    preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
     
     if preProcess.study == 'Validation':
         preProcess.inputDicomPatientDir = base.validationStydyFolder
-        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230918/#Validation')
+        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230920/#Validation')
     elif preProcess.study == 'Treatment':
         preProcess.inputDicomPatientDir = base.treatmentStudyFolder
-        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230918/#Treatment')
+        base.dataFolderMICE = os.path.join(base.workFolder, 'ExtractStructuresData/Mice Batch/20230920/#Treatment')
 
     # Define output directory for Nifti data 
     preProcess.outputNiftiPatientDir = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study)
