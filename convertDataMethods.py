@@ -125,7 +125,21 @@ class convertDataMethodsClass:
         ### IMAGE VOLUME ###
         # Create the Nifti image stack from subjectFiles
         imageVolumes = []
-        for imageFile in conf.preProcess.ImageFileNameStack:
+        # for imageFile in conf.preProcess.ImageFileNameStack:
+        for index, imageFile in enumerate(conf.preProcess.ImageFileNameStack):
+
+            # Option for creating nnUnet data 
+            if conf.preProcess.createNNUnetData == True:
+                # Define folder for nnUnet data
+                nnUnetDataOutFolderPathData = os.path.join(dataOutBasePath, "nnUnetData", "imagesTr")
+                # Make sure output folder exists
+                os.makedirs(nnUnetDataOutFolderPathData, exist_ok=True)
+                # Copy the image file to nnUnetDataOutFolderPath with a new name
+                # Name is determined by the foor loop index
+                shutil.copyfile(os.path.join(subjectFolderPath, imageFile), os.path.join(nnUnetDataOutFolderPathData, subject + "_000" + str(index) + ".nii.gz"))
+                # Assert that index < 9
+                assert index < 9, 'Index must be less than 9'
+
             # Read Nifti file
             imageFilePath = os.path.join(subjectFolderPath, imageFile)
             imageData = nibabel.load(imageFilePath)
@@ -158,6 +172,18 @@ class convertDataMethodsClass:
                 print('Skipping this file and removing image data for ' + subject + ' from the dataset')
                 # Remove corresponding image data
                 os.remove(os.path.join(imagesOutFolderPath, f"{subject}_4channel.nii.gz"))
+                #return # Do not write GT file at all, abort processing for this patient. 
+                # Do the same for nnUnet data
+                if conf.preProcess.createNNUnetData == True:
+                    # Remove corresponding image data
+                    try: 
+                        os.remove(os.path.join(nnUnetDataOutFolderPathData, subject + "_0000" + ".nii.gz"))
+                        os.remove(os.path.join(nnUnetDataOutFolderPathData, subject + "_0001" + ".nii.gz"))
+                        os.remove(os.path.join(nnUnetDataOutFolderPathData, subject + "_0002" + ".nii.gz"))
+                        os.remove(os.path.join(nnUnetDataOutFolderPathData, subject + "_0003" + ".nii.gz"))
+                    except:
+                        print('Could not remove nnUnet data for ' + subject + ' from the dataset')
+                # Return 
                 return # Do not write GT file at all, abort processing for this patient. 
 
             GTData = nibabel.load(GTFilePath)
@@ -180,7 +206,17 @@ class convertDataMethodsClass:
         GTVolumeCombined = nibabel.Nifti1Image(GTVolume, GTData.affine)
         # Save image to 3D Nifti file
         outputFilename = os.path.join(GTOutFolderPath, f"{subject}_seg.nii.gz")
-        nibabel.save(GTVolumeCombined, outputFilename)     
+        nibabel.save(GTVolumeCombined, outputFilename)  
+
+        # Option for creating nnUnet data 
+        if conf.preProcess.createNNUnetData == True:
+             # Define folder for nnUnet data
+            nnUnetDataOutFolderPathLabels = os.path.join(dataOutBasePath, "nnUnetData", "labelsTr")
+            # Make sure output folder exists
+            os.makedirs(nnUnetDataOutFolderPathLabels, exist_ok=True)
+            # Copy the image file to nnUnetDataOutFolderPath with a new name
+            shutil.copyfile(outputFilename, os.path.join(nnUnetDataOutFolderPathLabels, subject + ".nii.gz"))
+
         print(' ')
 
 

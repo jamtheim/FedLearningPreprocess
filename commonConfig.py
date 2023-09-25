@@ -61,8 +61,8 @@ class commonConfigClass():
     base.treatmentStudyFolder = os.path.join(base.workFolder, 'Treatment study based on MRI' )
 
     # Set pre-processing on selected cohort (comment the other one out)
-    preProcess.study = 'Validation' # 'Validation' or 'Treatment'
-    #preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
+    #preProcess.study = 'Validation' # 'Validation' or 'Treatment'
+    preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
     
     if preProcess.study == 'Validation':
         preProcess.inputDicomPatientDir = base.validationStydyFolder
@@ -135,7 +135,7 @@ class commonConfigClass():
     # Create a dictory with the structure names and assign values for the GT Nifti file. Order is important and should be based on hierarki! 
     # As we only have one label map it is not possible to have overlapping structures. Sort below dictioary with this in mind. 
     preProcess.GTStructureFileName = {
-    'mask_BrainStem.nii.gz': 4,
+    'mask_BrainStem.nii.gz': 3,
     'mask_CTVT.nii.gz': 2,
     'mask_GTVT.nii.gz': 1, # Always smaller than CTV
     }
@@ -156,4 +156,7 @@ class commonConfigClass():
     preProcess.faceMaskOrientStructureFileName = 'mask_Brain.nii.gz' # Used for orientation of the face mask
 
    
+    # Create nnUnet compatible data for baseline model
+    preProcess.createNNUnetData = True
+    preProcess.NNUnetFolderName = 'nnUnetData' 
 
