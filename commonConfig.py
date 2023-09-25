@@ -61,8 +61,8 @@ class commonConfigClass():
     base.treatmentStudyFolder = os.path.join(base.workFolder, 'Treatment study based on MRI' )
 
     # Set pre-processing on selected cohort (comment the other one out)
-    #preProcess.study = 'Validation' # 'Validation' or 'Treatment'
-    preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
+    preProcess.study = 'Validation' # 'Validation' or 'Treatment'
+    #preProcess.study = 'Treatment' # 'Validation' or 'Treatment'
     
     if preProcess.study == 'Validation':
         preProcess.inputDicomPatientDir = base.validationStydyFolder

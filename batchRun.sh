@@ -1,5 +1,6 @@
 # Run MICE pre processing
-# Overwrite with any manually corrected data points 
+# Overwrite with any manually corrected data points
+# Christian had one with bad registrations 
 # Activate virtual environment
 source ./extractSt/bin/activate
 # Run in serial order
