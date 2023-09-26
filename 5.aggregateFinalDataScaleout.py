@@ -1,7 +1,7 @@
 # *********************************************************************************
 # Author: Christian Jamtheim Gustafsson, PhD, Medical Physcist Expert
 # Skåne University Hospital, Lund, Sweden and Lund University, Lund, Sweden
-# Description: Aggregate all final data to the same folder
+# Description: Aggregate all final data to the same folder for Scaleout
 # *********************************************************************************
 
 import os
@@ -21,14 +21,14 @@ conf = commonConfigClass()              # Init config class
 
 
 # ### SCRIPT STARTS HERE ###
-print('Aggregating Nifti data to final location')
+print('Aggregating Nifti data to final location for Scaleout')
 
 # Make sure the final data folder  preProcess.finalAggregatedDataDir exists
-if not os.path.isdir(conf.preProcess.finalAggregatedDataDir):
+if not os.path.isdir(conf.preProcess.finalAggregatedDataDirScaleout):
     # Create dir
-    os.makedirs(conf.preProcess.finalAggregatedDataDir, exist_ok=True)
+    os.makedirs(conf.preProcess.finalAggregatedDataDirScaleout, exist_ok=True)
 # Copy the folder "train" from conf.preProcess.outputNiftiPatientDirFinalResampledStacked to conf.preProcess.finalAggregatedDataDir
-shutil.copytree(os.path.join(conf.preProcess.outputNiftiPatientDirFinalResampledStacked, 'train'), os.path.join(conf.preProcess.finalAggregatedDataDir, 'train'), dirs_exist_ok=True)
+shutil.copytree(os.path.join(conf.preProcess.outputNiftiPatientDirFinalResampledStacked, 'train'), os.path.join(conf.preProcess.finalAggregatedDataDirScaleout, 'train'), dirs_exist_ok=True)
 
 # Print message
 print('Aggregating final data is complete!')

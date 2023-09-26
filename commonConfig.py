@@ -82,11 +82,17 @@ class commonConfigClass():
     # Corresponding folder for fused final, resampled and stacked data (used in 4.stackData.py)
     preProcess.outputNiftiPatientDirFinalResampledStacked = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAnonResampledStacked')
     
-    # Define folder for final aggregated data (used in 5.aggregateData.py)
+    # Define folder for final aggregated data (Scaleout) (used in 5.aggregateDataScaleout.py)
     # Define output directory 
-    preProcess.finalAggregatedData = 'FinalAggregatedData'
-    preProcess.finalAggregatedDataDir = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.finalAggregatedData)
+    preProcess.finalAggregatedDataScaleout = 'FinalAggregatedDataScaleout'
+    preProcess.finalAggregatedDataDirScaleout = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.finalAggregatedDataScaleout)
     
+    # Define folder for final aggregated data (Ifusion) (used in 6.aggregateDataIfusion.py)
+    # Define output directory 
+    preProcess.finalAggregatedDataIfusion = 'FinalAggregatedDataIfusion'
+    preProcess.finalAggregatedDataDirIfusion= os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.finalAggregatedDataIfusion)
+    
+
     # Set folder where DICOM struct file is located
     preProcess.RTstructFolderFirst = 'Structs'
     if preProcess.study == 'Validation':
