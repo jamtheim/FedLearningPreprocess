@@ -1,10 +1,9 @@
 # *********************************************************************************
 # Author: Anders Eklund, Lindköping University 
-
 # Modified by Christian Jamtheim Gustafsson, PhD, Medical Physcist Expert
 # Skåne University Hospital, Lund, Sweden and Lund University, Lund, Sweden
 # Description: Create JSON file for Ifusion training
-# # This script assumes that all nifti files (for T1, T1 GD, T2 GD, T2 FLAIR, seg (annotations)) are stored in one directory for all patients, with a unique patient string per patient, e.g.
+# This script assumes that all nifti files (for T1, T1 GD, T2 GD, T2 FLAIR, seg (annotations)) are stored in one directory for all patients, with a unique patient string per patient, e.g.
 # *********************************************************************************
 
 import os
@@ -128,9 +127,6 @@ else:
     print('JSON file not created as there are not the expected number of files in the directory!')
     print('Expected number of files: 175')
     print('Actual number of files: ' + str(len(os.listdir(root_directory))))
-
-
-
 
 
 # Print message
