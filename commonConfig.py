@@ -51,6 +51,8 @@ class commonConfigClass():
     postProcess = postProcess()
 
     # Set base configuration
+    # Set site name
+    preProcess.site = 'Lund'
     # Get folder where this file is located
     base.baseFolder = os.path.dirname(os.path.abspath(__file__))
     # Working folder 
@@ -80,6 +82,10 @@ class commonConfigClass():
     # Corresponding folder for fused final, resampled and stacked data (used in 4.stackData.py)
     preProcess.outputNiftiPatientDirFinalResampledStacked = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.study, 'FinalAnonResampledStacked')
     
+    # Define folder for final aggregated data (used in 5.aggregateData.py)
+    # Define output directory 
+    preProcess.finalAggregatedData = 'FinalAggregatedData'
+    preProcess.finalAggregatedDataDir = os.path.join(base.workFolder, 'ExtractStructuresData', preProcess.finalAggregatedData)
     
     # Set folder where DICOM struct file is located
     preProcess.RTstructFolderFirst = 'Structs'
