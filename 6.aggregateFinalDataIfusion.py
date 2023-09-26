@@ -89,6 +89,7 @@ for fileNr, patFile in enumerate(patFiles):
         filePathTarget = os.path.join(conf.preProcess.finalAggregatedDataDirIfusion, patient + '_' + newFileName)
         # Copy the file
         shutil.copyfile(filePathSource, filePathTarget)
+        # Test
         
 
 # Create needed JSON file for Ifusion training       
