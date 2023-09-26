@@ -8,6 +8,8 @@
 # are stored in one directory for all patients, with a unique patient string per patient. 
 # *********************************************************************************
 
+# NOT READY YET! 
+
 import os
 from joblib import Parallel, delayed
 import numpy as np 
