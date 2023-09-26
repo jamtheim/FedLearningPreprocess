@@ -10,7 +10,7 @@ python3 1.preProcessDataForTraining.py
 python3 2.fuseDataAndAnonymise.py
 python3 3.processAnonData.py
 python3 4.stackData.py
-python3 5.aggregateFinalData.py # But all data from all cohorts in the same folder 
-#python3 6.createIfusionJson.py # Create needed JSON file for iFusion framework
+python3 5.aggregateFinalData.py # Put all data from all cohorts in the same folder 
+#python3 6.createIfusionJson.py # Create needed JSON file for iFusion framework, note ready yet. 
 
 
