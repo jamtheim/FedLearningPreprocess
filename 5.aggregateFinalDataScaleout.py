@@ -21,7 +21,6 @@ conf = commonConfigClass()              # Init config class
 #convertData = convertDataMethodsClass() # Functions for converting DICOM to Nifti data
 
 
-
 def convertNiiGzToNii(folderPath):
     """
     Convert all nii.gz files to nii so it will be faster to load them during training and inference
@@ -40,7 +39,6 @@ def convertNiiGzToNii(folderPath):
         os.remove(filePath)
 
 
-
 # ### SCRIPT STARTS HERE ###
 print('Aggregating Nifti data to final location for Scaleout')
 
@@ -56,8 +54,6 @@ shutil.copytree(os.path.join(conf.preProcess.outputNiftiPatientDirFinalResampled
 convertNiiGzToNii(os.path.join(conf.preProcess.finalAggregatedDataDirScaleout, 'train', 'images'))
 # Labels
 convertNiiGzToNii(os.path.join(conf.preProcess.finalAggregatedDataDirScaleout, 'train', 'labels'))
-
-
 # Print message
 print('Aggregating and converting final data is complete!')
 
