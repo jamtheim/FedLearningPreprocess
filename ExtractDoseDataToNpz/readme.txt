@@ -28,9 +28,10 @@ In Python script nifty_to_npz.py
         	'optic_nerve_R',
         	'body'
 4. Run the python script.
-5. You should now see 2 files in the folder for each patient, "all_structs.npz" and "dose.npz"
+5. You should now see 3 files in the folder for each patient, "all_structs.npz", "brain.npz" and "dose.npz"
 	- all_structs.npz has (Structure, slice, row, column) and is in int8 
 	- dose.npz has (slice, row, column) and represents the dose matrix divided by 60, is in float32
+    - brain.npz is mostly for potential future use. same structure as the "all_structs" file.
 	- Everything is downsampled to 3x3x3 mm voxel size
 
 
