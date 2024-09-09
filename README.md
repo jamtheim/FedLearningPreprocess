@@ -1,2 +1,3 @@
 # FedLearningPreprocess
-Data preprocessing of MRI radiotherapy data for Federated Learning
+Data preprocessing of MRI radiotherapy data for Federated Learning.
+See master repo. 
