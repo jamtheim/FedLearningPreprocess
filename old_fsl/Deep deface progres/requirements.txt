@@ -1,7 +1,0 @@
-numpy==1.19.5
-nibabel==3.2.1
-argparse==1.4.0
-termcolor==1.1.0
-tensorflow==2.5.1
-keras==2.4.3
-deepdefacer[tf-cpu]
